@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <cpuid.h>
 #include <fcntl.h>
 #include <pci/pci.h>
 #include <sys/io.h>
@@ -99,6 +100,24 @@ int get_pch_sbreg_addr(struct pci_access *pci, pciaddr_t *sbreg_addr) {
   return 0;
 }
 
+int get_pch_gen_hardcoded_sbreg_addr(pciaddr_t *sbreg_addr) {
+  unsigned int cpuid;
+  unsigned int ebx, ecx, edx;
+
+  __cpuid(0x1, cpuid, ebx, ecx, edx);
+
+  // Intel now locks the P2SB PCI device at runtime. If P2SB, there is SBREG
+  // - NOTE: We simply hope that no OEM/IBV uses non-standard SBREG_BAR.
+  if ((cpuid & 0x00f00) == 0x00600) {
+      MSG("WARN: Using hardcoded SBREG_BAR for CPUID 0x%x", cpuid);
+      *sbreg_addr = 0xfd000000;
+      return 0;
+  } else {
+      MSG("WARN: Failed to determine SBREG_BAR for CPUID 0x%x!", cpuid);
+      return 1;
+  }
+}
+
 uint32_t sideband_read(void *sbmap, uint8_t port, uint16_t reg) {
   volatile uint32_t *addr;
   uint32_t val;
@@ -118,8 +137,10 @@ void sideband_write(void *sbmap, uint8_t port, uint16_t reg, uint32_t value) {
 int try_pch(struct pci_access *pci, uint8_t port, uint32_t offset, uint8_t do_write, uint32_t value) {
   pciaddr_t sbreg_addr;
   if(get_pch_sbreg_addr(pci, &sbreg_addr)) {
-    MSG("Re-enumerating PCI devices will probably crash the system");
-    ERR("Probing Series 100 PCH failed");
+    if(get_pch_gen_hardcoded_sbreg_addr(&sbreg_addr)) {
+      MSG("Re-enumerating PCI devices will probably crash the system");
+      ERR("Probing Series 100 PCH failed");
+    }
   }
 
   int memfd = open("/dev/mem", O_RDWR);
