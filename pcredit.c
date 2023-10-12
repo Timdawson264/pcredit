@@ -121,7 +121,7 @@ int get_pch_gen_hardcoded_sbreg_addr(pciaddr_t *sbreg_addr) {
 uint32_t sideband_read(void *sbmap, uint8_t port, uint16_t reg) {
   volatile uint32_t *addr;
   uint32_t val;
-  addr = (volatile uint32_t *)((uintptr_t)sbmap + (port << P2SB_PORTID_SHIFT) + reg);
+  addr = (volatile uint32_t *)((uintptr_t)sbmap + ((uintptr_t)port << P2SB_PORTID_SHIFT) + reg);
   val = *addr;
   MSG("*%p == %08x", addr, val);
   return val;
@@ -129,7 +129,7 @@ uint32_t sideband_read(void *sbmap, uint8_t port, uint16_t reg) {
 
 void sideband_write(void *sbmap, uint8_t port, uint16_t reg, uint32_t value) {
   volatile uint32_t *addr;
-  addr = (volatile uint32_t *)((uintptr_t)sbmap + (port << P2SB_PORTID_SHIFT) + reg);
+  addr = (volatile uint32_t *)((uintptr_t)sbmap + ((uintptr_t)port << P2SB_PORTID_SHIFT) + reg);
   MSG("*%p =  %08x", addr, value);
   *addr = value;
 }
